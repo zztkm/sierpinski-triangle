@@ -1,0 +1,41 @@
+name: build and deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.70.0
+          target: wasm32-unknown-unknown
+          override: true
+          components: clippy
+      - uses: actions-rs/install@v0.1
+        with:
+          crate: wasm-pack
+          version: 0.12.1
+          use-tool-cache: true
+      - name: Annotate commit with clippy warnings
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16.13.0"
+      - run: pnpm install
+      - run: pnpm test
+      - run: pnpm build
+
+      - name: Publish
+        uses: cloudflare/pages-action@1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: "tsurutatakumi-info"
+          directory: "dist"
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
